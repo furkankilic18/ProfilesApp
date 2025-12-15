@@ -2,36 +2,33 @@ import { useEffect, useState } from "react";
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
   ActivityIndicator,
-  Pressable,
 } from "react-native";
 import { api } from "../api/client";
 
-export default function ProfilesListScreen({ navigation }) {
-  const [profiles, setProfiles] = useState([]);
+export default function ProfileDetailScreen({ route }) {
+  const { id } = route.params;
+
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Server'dan profilleri çek
-  const fetchProfiles = async () => {
+  const fetchProfile = async () => {
     try {
-      const response = await api.get("/profiles?page=1&limit=10");
-      setProfiles(response.data);
+      const response = await api.get(`/profiles/${id}`);
+      setProfile(response.data);
     } catch (err) {
-      setError("Profiller yüklenemedi");
+      setError("Profil detayları yüklenemedi");
     } finally {
       setLoading(false);
     }
   };
 
-  // Ekran ilk açıldığında çalışır
   useEffect(() => {
-    fetchProfiles();
+    fetchProfile();
   }, []);
 
-  // Yükleniyor durumu
   if (loading) {
     return (
       <View style={styles.center}>
@@ -41,7 +38,6 @@ export default function ProfilesListScreen({ navigation }) {
     );
   }
 
-  // Hata durumu
   if (error) {
     return (
       <View style={styles.center}>
@@ -50,47 +46,51 @@ export default function ProfilesListScreen({ navigation }) {
     );
   }
 
-  // Her bir liste elemanı
-  const renderItem = ({ item }) => (
-    <Pressable
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate("ProfileDetail", { id: item.id })
-      }
-    >
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.email}>{item.email}</Text>
-    </Pressable>
-  );
+  if (!profile) {
+    return (
+      <View style={styles.center}>
+        <Text>Profil bulunamadı</Text>
+      </View>
+    );
+  }
 
   return (
-    <FlatList
-      data={profiles}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={renderItem}
-      contentContainerStyle={styles.list}
-    />
+    <View style={styles.container}>
+      <Text style={styles.name}>{profile.name}</Text>
+
+      <Text style={styles.label}>E-posta</Text>
+      <Text style={styles.value}>{profile.email}</Text>
+
+      <Text style={styles.label}>Yaş</Text>
+      <Text style={styles.value}>{profile.age}</Text>
+
+      {profile.phone && (
+        <>
+          <Text style={styles.label}>Telefon</Text>
+          <Text style={styles.value}>{profile.phone}</Text>
+        </>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {
-    padding: 16,
-  },
-  card: {
-    backgroundColor: "#fff",
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 8,
-    elevation: 3,
+  container: {
+    flex: 1,
+    padding: 24,
   },
   name: {
-    fontSize: 18,
+    fontSize: 26,
     fontWeight: "bold",
+    marginBottom: 20,
   },
-  email: {
-    fontSize: 14,
-    color: "#555",
+  label: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 12,
+  },
+  value: {
+    fontSize: 16,
   },
   center: {
     flex: 1,
