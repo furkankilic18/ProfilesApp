@@ -2,32 +2,41 @@ import { useEffect, useState } from "react";
 import {
   View,
   Text,
+  FlatList,
   StyleSheet,
   ActivityIndicator,
+  Pressable,
+  RefreshControl,
 } from "react-native";
 import { api } from "../api/client";
 
-export default function ProfileDetailScreen({ route }) {
-  const { id } = route.params;
-
-  const [profile, setProfile] = useState(null);
+export default function ProfilesListScreen({ navigation }) {
+  const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchProfile = async () => {
+  const fetchProfiles = async () => {
+    setError(null);
     try {
-      const response = await api.get(`/profiles/${id}`);
-      setProfile(response.data);
+      const response = await api.get("/profiles?page=1&limit=10");
+      setProfiles(response.data);
     } catch (err) {
-      setError("Profil detayları yüklenemedi");
+      setError(err.message || "Profiller yüklenemedi");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProfile();
+    fetchProfiles();
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchProfiles();
+    setRefreshing(false);
+  };
 
   if (loading) {
     return (
@@ -42,59 +51,60 @@ export default function ProfileDetailScreen({ route }) {
     return (
       <View style={styles.center}>
         <Text>{error}</Text>
+        <Pressable style={styles.retry} onPress={fetchProfiles}>
+          <Text style={styles.retryText}>Tekrar Dene</Text>
+        </Pressable>
       </View>
     );
   }
 
-  if (!profile) {
-    return (
-      <View style={styles.center}>
-        <Text>Profil bulunamadı</Text>
-      </View>
-    );
-  }
+  const renderItem = ({ item }) => (
+    <Pressable
+      style={styles.card}
+      onPress={() => navigation.navigate("ProfileDetail", { id: item.id })}
+    >
+      <Text style={styles.name}>{item.name}</Text>
+      <Text style={styles.email}>{item.email}</Text>
+    </Pressable>
+  );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.name}>{profile.name}</Text>
-
-      <Text style={styles.label}>E-posta</Text>
-      <Text style={styles.value}>{profile.email}</Text>
-
-      <Text style={styles.label}>Yaş</Text>
-      <Text style={styles.value}>{profile.age}</Text>
-
-      {profile.phone && (
-        <>
-          <Text style={styles.label}>Telefon</Text>
-          <Text style={styles.value}>{profile.phone}</Text>
-        </>
-      )}
-    </View>
+    <FlatList
+      data={profiles}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={renderItem}
+      contentContainerStyle={profiles.length === 0 && styles.center}
+      ListEmptyComponent={<Text>Profil bulunamadı</Text>}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
+  card: {
+    backgroundColor: "#fff",
+    padding: 16,
+    margin: 12,
+    borderRadius: 8,
+    elevation: 3,
   },
-  name: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 12,
-  },
-  value: {
-    fontSize: 16,
-  },
+  name: { fontSize: 18, fontWeight: "bold" },
+  email: { color: "#555" },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  retry: {
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: "#007AFF",
+    borderRadius: 6,
+  },
+  retryText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
